@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+    <header class="bg-white sticky top-0 z-20 shadow-md">
+        <nav class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <h1 class="text-2xl font-bold text-sky-700">Task Manager</h1>
+            <div class="flex items-center space-x-4">
+                <button id="show-stats-btn" class="bg-sky-500 hover:bg-sky-600 text-white font-medium py-2 px-4 rounded-full transition-colors duration-300">
+                    Estatísticas 📊
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+        
+        <!-- Formulário de Nova Tarefa -->
+        <div class="md:col-span-1 bg-white p-6 rounded-2xl shadow-xl h-fit">
+            <h2 class="text-2xl font-bold mb-6 text-center text-slate-700">Adicionar Tarefa</h2>
+            <form id="task-form" class="space-y-4">
+                <div>
+                    <label for="task-title" class="block text-sm font-medium text-slate-600">Título</label>
+                    <input type="text" id="task-title" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 transition-colors duration-200">
+                </div>
+                <div>
+                    <label for="task-description" class="block text-sm font-medium text-slate-600">Descrição</label>
+                    <textarea id="task-description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 transition-colors duration-200"></textarea>
+                </div>
+                <div>
+                    <label for="task-category" class="block text-sm font-medium text-slate-600">Categoria</label>
+                    <select id="task-category" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 transition-colors duration-200">
+                        <option value="">Nenhuma</option>
+                        <option value="Trabalho">Trabalho</option>
+                        <option value="Pessoal">Pessoal</option>
+                        <option value="Estudos">Estudos</option>
+                        <option value="Saúde">Saúde</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="task-due-date" class="block text-sm font-medium text-slate-600">Data de Vencimento</label>
+                    <input type="date" id="task-due-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500 transition-colors duration-200">
+                </div>
+                <button type="submit" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition-colors duration-300">
+                    Adicionar Tarefa
+                </button>
+            </form>
+        </div>
+
+        <!-- Lista de Tarefas -->
+        <div class="md:col-span-2 space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-slate-700">Minhas Tarefas</h2>
+                <div class="mt-4 sm:mt-0 flex space-x-2">
+                    <button id="filter-all" class="px-4 py-2 rounded-full text-sm font-medium bg-sky-200 text-sky-800 transition-colors duration-200">Todos</button>
+                    <button id="filter-pending" class="px-4 py-2 rounded-full text-sm font-medium bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors duration-200">Pendentes</button>
+                    <button id="filter-completed" class="px-4 py-2 rounded-full text-sm font-medium bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors duration-200">Concluídos</button>
+                </div>
+            </div>
+            <div id="tasks-list" class="space-y-4">
+                <p class="text-center text-slate-500">Nenhuma tarefa adicionada ainda.</p>
+            </div>
+        </div>
+
+        <!-- Dashboard de Estatísticas (Escondido por padrão) -->
+        <div id="stats-dashboard" class="fixed inset-0 bg-slate-800 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-3xl p-8 max-w-4xl w-full mx-auto shadow-2xl relative">
+                <button id="close-stats-btn" class="absolute top-4 right-4 text-slate-500 hover:text-slate-800">
+                    <span class="text-2xl font-bold">&times;</span>
+                </button>
+                <h2 class="text-3xl font-bold text-center text-sky-700 mb-8">Estatísticas de Produtividade</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="chart-container">
+                        <canvas id="tasks-completed-chart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="tasks-by-category-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal de Edição de Tarefa -->
+        <div id="edit-modal" class="fixed inset-0 bg-slate-800 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+                <h3 class="text-2xl font-bold mb-4 text-center">Editar Tarefa</h3>
+                <form id="edit-form" class="space-y-4">
+                    <input type="hidden" id="edit-task-id">
+                    <div>
+                        <label for="edit-title" class="block text-sm font-medium text-slate-600">Título</label>
+                        <input type="text" id="edit-title" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                    </div>
+                     <div>
+                        <label for="edit-description" class="block text-sm font-medium text-slate-600">Descrição</label>
+                        <textarea id="edit-description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500"></textarea>
+                    </div>
+                    <div>
+                        <label for="edit-category" class="block text-sm font-medium text-slate-600">Categoria</label>
+                        <select id="edit-category" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                            <option value="">Nenhuma</option>
+                            <option value="Trabalho">Trabalho</option>
+                            <option value="Pessoal">Pessoal</option>
+                            <option value="Estudos">Estudos</option>
+                            <option value="Saúde">Saúde</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit-due-date" class="block text-sm font-medium text-slate-600">Data de Vencimento</label>
+                        <input type="date" id="edit-due-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                    </div>
+                    <div class="flex justify-end space-x-4 mt-6">
+                        <button type="button" id="cancel-edit-btn" class="px-4 py-2 rounded-md font-medium text-slate-700 bg-slate-200 hover:bg-slate-300 transition-colors duration-300">Cancelar</button>
+                        <button type="submit" class="px-4 py-2 rounded-md font-medium text-white bg-sky-600 hover:bg-sky-700 transition-colors duration-300">Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const taskForm = document.getElementById('task-form');
+        const taskList = document.getElementById('tasks-list');
+        const showStatsBtn = document.getElementById('show-stats-btn');
+        const closeStatsBtn = document.getElementById('close-stats-btn');
+        const statsDashboard = document.getElementById('stats-dashboard');
+        const editModal = document.getElementById('edit-modal');
+        const editForm = document.getElementById('edit-form');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const filterAllBtn = document.getElementById('filter-all');
+        const filterPendingBtn = document.getElementById('filter-pending');
+        const filterCompletedBtn = document.getElementById('filter-completed');
+
+        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+        let currentFilter = 'all';
+
+        let tasksCompletedChart, tasksByCategoryChart;
+
+        function renderTasks(filter = 'all') {
+            taskList.innerHTML = '';
+            let filteredTasks = tasks;
+            if (filter !== 'all') {
+                filteredTasks = tasks.filter(task => task.status === filter);
+            }
+            if (filteredTasks.length === 0) {
+                taskList.innerHTML = `<p class="text-center text-slate-500">Nenhuma tarefa ${filter === 'completed' ? 'concluída' : 'pendente'} ainda.</p>`;
+                return;
+            }
+
+            filteredTasks.forEach(task => {
+                const taskCard = document.createElement('div');
+                const isCompleted = task.status === 'completed';
+                taskCard.className = `bg-white p-4 rounded-xl shadow-lg border-l-4 ${isCompleted ? 'border-green-500' : 'border-sky-500'}`;
+
+                const dueDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString('pt-BR') : 'Não definido';
+
+                taskCard.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-lg font-semibold ${isCompleted ? 'line-through text-slate-500' : 'text-slate-700'}">${task.title}</h3>
+                        <span class="text-sm font-medium px-2 py-0.5 rounded-full ${isCompleted ? 'bg-green-100 text-green-700' : 'bg-sky-100 text-sky-700'}">${isCompleted ? 'Concluído' : 'Pendente'}</span>
+                    </div>
+                    <p class="text-sm text-slate-500 mb-2">${task.description}</p>
+                    <div class="flex items-center justify-between text-xs text-slate-400 mb-4">
+                        <span>Categoria: ${task.category || 'Nenhuma'}</span>
+                        <span>Vencimento: ${dueDate}</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button class="toggle-status-btn bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm py-1 px-3 rounded-full transition-colors duration-200" data-id="${task.id}">
+                            ${isCompleted ? 'Marcar como pendente' : 'Marcar como concluído'}
+                        </button>
+                        <button class="edit-btn text-blue-500 hover:text-blue-700 text-sm" data-id="${task.id}">Editar</button>
+                        <button class="delete-btn text-red-500 hover:text-red-700 text-sm" data-id="${task.id}">Excluir</button>
+                    </div>
+                `;
+                taskList.appendChild(taskCard);
+            });
+
+            updateChartData();
+        }
+
+        function addTask(event) {
+            event.preventDefault();
+            const title = document.getElementById('task-title').value;
+            const description = document.getElementById('task-description').value;
+            const category = document.getElementById('task-category').value;
+            const dueDate = document.getElementById('task-due-date').value;
+
+            if (!title) return;
+
+            const newTask = {
+                id: crypto.randomUUID(),
+                title,
+                description,
+                category,
+                dueDate,
+                status: 'pending',
+                createdAt: new Date().toISOString()
+            };
+            tasks.push(newTask);
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            taskForm.reset();
+            renderTasks(currentFilter);
+        }
+
+        function toggleTaskStatus(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.status = task.status === 'completed' ? 'pending' : 'completed';
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+                renderTasks(currentFilter);
+            }
+        }
+
+        function deleteTask(taskId) {
+            tasks = tasks.filter(t => t.id !== taskId);
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            renderTasks(currentFilter);
+        }
+
+        function showEditModal(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                document.getElementById('edit-task-id').value = task.id;
+                document.getElementById('edit-title').value = task.title;
+                document.getElementById('edit-description').value = task.description;
+                document.getElementById('edit-category').value = task.category;
+                document.getElementById('edit-due-date').value = task.dueDate;
+                editModal.classList.remove('hidden');
+            }
+        }
+
+        function handleEditSubmit(event) {
+            event.preventDefault();
+            const taskId = document.getElementById('edit-task-id').value;
+            const task = tasks.find(t => t.id === taskId);
+
+            if (task) {
+                task.title = document.getElementById('edit-title').value;
+                task.description = document.getElementById('edit-description').value;
+                task.category = document.getElementById('edit-category').value;
+                task.dueDate = document.getElementById('edit-due-date').value;
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+                editModal.classList.add('hidden');
+                renderTasks(currentFilter);
+            }
+        }
+
+        function updateChartData() {
+            const completedCount = tasks.filter(t => t.status === 'completed').length;
+            const pendingCount = tasks.filter(t => t.status === 'pending').length;
+
+            if (tasksCompletedChart) {
+                tasksCompletedChart.data.labels = ['Concluídas', 'Pendentes'];
+                tasksCompletedChart.data.datasets[0].data = [completedCount, pendingCount];
+                tasksCompletedChart.update();
+            } else {
+                const ctx = document.getElementById('tasks-completed-chart').getContext('2d');
+                tasksCompletedChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Concluídas', 'Pendentes'],
+                        datasets: [{
+                            label: 'Total de Tarefas',
+                            data: [completedCount, pendingCount],
+                            backgroundColor: ['rgba(16, 185, 129, 0.7)', 'rgba(14, 165, 233, 0.7)'],
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: 'Conclusão de Tarefas' }
+                        },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+            }
+
+            const categoryCounts = tasks.reduce((acc, task) => {
+                const category = task.category || 'Nenhuma';
+                acc[category] = (acc[category] || 0) + 1;
+                return acc;
+            }, {});
+
+            if (tasksByCategoryChart) {
+                tasksByCategoryChart.data.labels = Object.keys(categoryCounts);
+                tasksByCategoryChart.data.datasets[0].data = Object.values(categoryCounts);
+                tasksByCategoryChart.update();
+            } else {
+                const ctx = document.getElementById('tasks-by-category-chart').getContext('2d');
+                tasksByCategoryChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(categoryCounts),
+                        datasets: [{
+                            label: 'Tarefas por Categoria',
+                            data: Object.values(categoryCounts),
+                            backgroundColor: [
+                                'rgba(14, 165, 233, 0.7)',
+                                'rgba(245, 158, 11, 0.7)',
+                                'rgba(16, 185, 129, 0.7)',
+                                'rgba(239, 68, 68, 0.7)',
+                                'rgba(99, 102, 241, 0.7)'
+                            ],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: 'Distribuição por Categoria' }
+                        }
+                    }
+                });
+            }
+        }
+
+        // --- Event Listeners ---
+        taskForm.addEventListener('submit', addTask);
+        
+        taskList.addEventListener('click', (e) => {
+            const taskId = e.target.dataset.id;
+            if (e.target.classList.contains('toggle-status-btn')) {
+                toggleTaskStatus(taskId);
+            } else if (e.target.classList.contains('delete-btn')) {
+                deleteTask(taskId);
+            } else if (e.target.classList.contains('edit-btn')) {
+                showEditModal(taskId);
+            }
+        });
+
+        showStatsBtn.addEventListener('click', () => {
+            statsDashboard.classList.remove('hidden');
+            updateChartData();
+        });
+
+        closeStatsBtn.addEventListener('click', () => {
+            statsDashboard.classList.add('hidden');
+        });
+
+        cancelEditBtn.addEventListener('click', () => {
+            editModal.classList.add('hidden');
+        });
+
+        editForm.addEventListener('submit', handleEditSubmit);
+
+        filterAllBtn.addEventListener('click', () => {
+            currentFilter = 'all';
+            renderTasks('all');
+            document.querySelectorAll('#filter-all, #filter-pending, #filter-completed').forEach(btn => btn.classList.remove('bg-sky-200', 'text-sky-800'));
+            filterAllBtn.classList.add('bg-sky-200', 'text-sky-800');
+        });
+
+        filterPendingBtn.addEventListener('click', () => {
+            currentFilter = 'pending';
+            renderTasks('pending');
+            document.querySelectorAll('#filter-all, #filter-pending, #filter-completed').forEach(btn => btn.classList.remove('bg-sky-200', 'text-sky-800'));
+            filterPendingBtn.classList.add('bg-sky-200', 'text-sky-800');
+        });
+
+        filterCompletedBtn.addEventListener('click', () => {
+            currentFilter = 'completed';
+            renderTasks('completed');
+            document.querySelectorAll('#filter-all, #filter-pending, #filter-completed').forEach(btn => btn.classList.remove('bg-sky-200', 'text-sky-800'));
+            filterCompletedBtn.classList.add('bg-sky-200', 'text-sky-800');
+        });
+        
+        renderTasks();
+    </script>
+</body>
+</html>
